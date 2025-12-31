@@ -88,3 +88,34 @@ body {
     font-size: 13px;
     margin-bottom: 15px;
 }
+/* ===========================
+   Bouton création compte entreprise
+   =========================== */
+
+.separator {
+    margin: 25px 0 15px;
+    font-size: 13px;
+    color: #999;
+    text-align: center;
+}
+
+.register-btn {
+    display: block;
+    width: 100%;
+    padding: 11px;
+    background-color: #fff;
+    color: #000;
+    border: 1px solid #000;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    text-decoration: none;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.register-btn:hover {
+    background-color: #000;
+    color: #fff;
+}

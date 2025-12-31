@@ -1,38 +1,34 @@
 <?php
-/**
- * Front Controller
- * Point d’entrée unique de l’application
- * Toute requête passe par ce fichier
- */
-
 session_start();
 
-// Chargement des bases
-require_once '../app/config/database.php';
-require_once '../app/core/Controller.php';
-require_once '../app/core/Model.php';
+if (isset($_SESSION['user'])) {
 
-// Par défaut : page de connexion
-$controller = $_GET['controller'] ?? 'auth';
-$action = $_GET['action'] ?? 'login';
+    switch ($_SESSION['user']['role']) {
 
-// Construction du contrôleur
-$controllerName = ucfirst($controller) . 'Controller';
-$controllerFile = "../app/controllers/$controllerName.php";
+        case 'ETUDIANT':
+            header('Location: /etudiant/');
+            exit;
 
-// Si le contrôleur existe
-if (file_exists($controllerFile)) {
+        case 'ENTREPRISE':
+            header('Location: /entreprise/');
+            exit;
 
-    require_once $controllerFile;
-    $controllerObject = new $controllerName();
+        case 'ENSEIGNANT':
+            header('Location: /enseignant/');
+            exit;
 
-    // Si l’action existe
-    if (method_exists($controllerObject, $action)) {
-        $controllerObject->$action();
-        exit;
+        case 'SECRETAIRE':
+            header('Location: /secretaire/');
+            exit;
+
+        case 'ADMINISTRATEUR':
+            header('Location: /public/admin/');
+            exit;
     }
 }
 
-// CAS PAR DÉFAUT : redirection propre vers login
-header("Location: index.php?controller=auth&action=login");
-exit;
+$error = $_SESSION['error'] ?? null;
+unset($_SESSION['error']);
+
+// Affiche la vue login (app reste privé)
+require __DIR__ . '/../app/views/auth/login.php';

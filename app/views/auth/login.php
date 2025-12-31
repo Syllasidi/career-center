@@ -1,10 +1,11 @@
 <?php
 /**
  * Vue : Page de connexion
- * Conforme à la maquette du rapport
+
  * MVC : affichage uniquement
  */
 ?>
+
 
 <!DOCTYPE html>
 <html lang="fr">
@@ -13,7 +14,8 @@
     <title>IDMC Career Center – Connexion</title>
 
     <!-- CSS externe -->
-    <link rel="stylesheet" href="/career-center/public/assets/css/login.css">
+  <link rel="stylesheet" href="assets/css/login.css">
+
 </head>
 
 <body>
@@ -27,7 +29,8 @@
             <div class="error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
-        <form method="post">
+     <form method="post" action="auth.php">
+
 
             <div class="form-group">
                 <label>Identifiant</label>
@@ -44,6 +47,14 @@
             </button>
 
         </form>
+
+        <!-- 🔽 AJOUT ICI -->
+        <div class="separator">— ou —</div>
+
+        <a href="/inscription_entreprise.php" class="register-btn">
+    Créer un compte entreprise
+</a>
+
 
         <div class="footer-text">
             Accès réservé aux étudiants, entreprises et personnels IDMC
