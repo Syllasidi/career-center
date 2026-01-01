@@ -15,6 +15,10 @@
 
     <!-- CSS externe -->
   <link rel="stylesheet" href="assets/css/login.css">
+  <?php if (!empty($_SESSION['success'])): ?>
+    <meta http-equiv="refresh" content="2;url=/public">
+<?php endif; ?>
+
 
 </head>
 
@@ -28,6 +32,15 @@
         <?php if (!empty($error)): ?>
             <div class="error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
+        <?php if (!empty($_SESSION['success'])): ?>
+    <div class="success">
+        <?= htmlspecialchars($_SESSION['success']) ?>
+    </div>
+<?php
+    unset($_SESSION['success']);
+endif;
+?>
+
 
      <form method="post" action="auth.php">
 

@@ -6,19 +6,19 @@ if (isset($_SESSION['user'])) {
     switch ($_SESSION['user']['role']) {
 
         case 'ETUDIANT':
-            header('Location: /etudiant/');
+            header('Location: /public/etudiant/');
             exit;
 
         case 'ENTREPRISE':
-            header('Location: /entreprise/');
+            header('Location: /public/entreprise/');
             exit;
 
         case 'ENSEIGNANT':
-            header('Location: /enseignant/');
+            header('Location: /public/enseignant/');
             exit;
 
         case 'SECRETAIRE':
-            header('Location: /secretaire/');
+            header('Location: /public/secretaire/');
             exit;
 
         case 'ADMINISTRATEUR':

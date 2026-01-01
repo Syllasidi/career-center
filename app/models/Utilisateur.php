@@ -9,7 +9,7 @@ class Utilisateur {
         $pdo = Database::getConnection();
 
         $sql = "
-            SELECT u.idutilisateur, u.role, c.mdp
+            SELECT u.idutilisateur, u.role,u.nom,u.email,u.prenom, c.mdp
             FROM utilisateur u
             JOIN compte c ON c.idutilisateur = u.idUtilisateur
             WHERE u.email = ?

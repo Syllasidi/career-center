@@ -18,15 +18,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$user) {
         $_SESSION['error'] = "Identifiants incorrects";
-        header('Location: /');
+        header('Location: /public');
         exit;
     }
-
+    $_SESSION['success'] = "Connexion réussie. Redirection ...";
     $_SESSION['user'] = [
-        'id'   => $user['idutilisateur'], 
-        'role' => $user['role']
-    ];
+    'idutilisateur' => $user['idutilisateur'],
+    'nom'           => $user['nom'],
+    'prenom'        => $user['prenom'],
+    'email'         => $user['email'],
+    'role'          => $user['role']
+];
 
-    header('Location: /public'); // index.php redirige vers /admin/ /etudiant/ etc
+    require __DIR__ . '/../views/auth/login.php';
     exit;
 }

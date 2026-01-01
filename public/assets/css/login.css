@@ -88,6 +88,13 @@ body {
     font-size: 13px;
     margin-bottom: 15px;
 }
+success{
+    font-size: 13px;
+    margin-bottom: 15px;
+    color: #16c949;
+    text-align: center;
+}
+
 /* ===========================
    Bouton création compte entreprise
    =========================== */
