@@ -232,5 +232,81 @@ class Secretaire
     }
 
 
+
+
+    /**
+ * Infos personnelles du secrétaire
+ */
+public function getInfosCompte(int $idUtilisateur): array
+{
+    $stmt = $this->db->prepare("
+        SELECT 
+            u.nom,
+            u.prenom,
+            u.email,
+            u.role,
+            s.en_conge
+        FROM utilisateur u
+        JOIN secretaire s ON s.idutilisateur = u.idutilisateur
+        WHERE u.idutilisateur = :id
+    ");
+    $stmt->execute(['id' => $idUtilisateur]);
+
+    return $stmt->fetch() ?: [];
+}
+
+
+/**
+ * Changement de mot de passe
+ */
+public function changerMotDePasse(int $idUtilisateur, string $mdp): bool
+{
+    try {
+        $hash = password_hash($mdp, PASSWORD_DEFAULT);
+
+        $stmt = $this->db->prepare("
+            UPDATE compte
+            SET mdp = :mdp
+            WHERE idutilisateur = :id
+        ");
+
+        $stmt->execute([
+            'mdp' => $hash,
+            'id'  => $idUtilisateur
+        ]);
+
+        return true;
+
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+/**
+ * Mise à jour du statut congé
+ */
+public function setEnConge(int $idUtilisateur, bool $enConge): bool
+{
+    try {
+        $stmt = $this->db->prepare("
+            UPDATE secretaire
+            SET en_conge = :conge::boolean
+            WHERE idutilisateur = :id
+        ");
+
+        $stmt->execute([
+            'conge' => $enConge ? 'true' : 'false',
+            'id'    => $idUtilisateur
+        ]);
+
+        return true;
+
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+
+
 }
 

@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../models/Admin.php';
 $base = '/public';
 
 $adminModel = new Admin();
-$notifications = $adminModel->getNotificationsAdmin($_SESSION['user']['id']);
+$notifications = $adminModel->getNotificationsAdmin($_SESSION['user']['idutilisateur']);
 ?>
 
 <!DOCTYPE html>

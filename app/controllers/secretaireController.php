@@ -71,4 +71,77 @@ class secretaireController
         header('Location: /public/secretaire/?page=creer_etudiants');
         exit;
     }
+
+
+
+    public function changerMdp(): void
+{
+    if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'SECRETAIRE') {
+        header('Location: /public');
+        exit;
+    }
+
+    $mdp = $_POST['nouveau_mdp'] ?? '';
+    $confirm = $_POST['confirmation_mdp'] ?? '';
+
+    if ($mdp === '' || $confirm === '') {
+        $_SESSION['error'] = "Tous les champs sont obligatoires.";
+        header('Location: /public/secretaire/?page=compte');
+        exit;
+    }
+
+    if ($mdp !== $confirm) {
+        $_SESSION['error'] = "Les mots de passe ne correspondent pas.";
+        header('Location: /public/secretaire/?page=compte');
+        exit;
+    }
+
+    $ok = $this->secretaireModel->changerMotDePasse(
+        $_SESSION['user']['idutilisateur'],
+        $mdp
+    );
+
+    if ($ok) {
+        $_SESSION['success'] = "Mot de passe modifié avec succès.";
+    } else {
+        $_SESSION['error'] = "Erreur lors de la modification du mot de passe.";
+    }
+
+    header('Location: /public/secretaire/?page=compte');
+    exit;
+}
+
+
+public function changerConge(): void
+{
+    if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'SECRETAIRE') {
+        header('Location: /public');
+        exit;
+    }
+
+    $etat = $_POST['en_conge'] ?? null;
+
+    if ($etat === null) {
+        $_SESSION['error'] = "Action invalide.";
+        header('Location: /public/secretaire/?page=compte');
+        exit;
+    }
+
+    $enConge = ($etat === '1');
+
+    $ok = $this->secretaireModel->setEnConge(
+        $_SESSION['user']['idutilisateur'],
+        $enConge
+    );
+
+    if ($ok) {
+        $_SESSION['success'] = "Statut de congé mis à jour.";
+    } else {
+        $_SESSION['error'] = "Erreur lors de la mise à jour du statut.";
+    }
+
+    header('Location: /public/secretaire/?page=compte');
+    exit;
+}
+
 }

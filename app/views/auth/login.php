@@ -64,9 +64,11 @@ endif;
         <!-- 🔽 AJOUT ICI -->
         <div class="separator">— ou —</div>
 
-        <a href="/inscription_entreprise.php" class="register-btn">
+       <a href="/public/entreprise/" class="register-btn">
     Créer un compte entreprise
 </a>
+
+
 
 
         <div class="footer-text">

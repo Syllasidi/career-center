@@ -32,11 +32,11 @@ $base = '/public';
             <strong>nom;prenom;email;date_naissance;formation</strong>
         </p>
     </div>
-    <?php if (!empty($_SESSION['message'])): ?>
+    <?php if (!empty($_SESSION['success'])): ?>
     <div class="info-notice">
-        <?= htmlspecialchars($_SESSION['message']) ?>
+        <?= htmlspecialchars($_SESSION['success']) ?>
     </div>
-    <?php unset($_SESSION['message']); ?>
+    <?php unset($_SESSION['success']); ?>
 <?php endif; ?>
 
 <?php if (!empty($_SESSION['error'])): ?>

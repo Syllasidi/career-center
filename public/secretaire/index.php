@@ -22,11 +22,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($_POST['action'] === 'refuser_attestation') {
         $ctrl->refuserAttestation();
     }
+    if ($_POST['action'] === 'changer_mdp') {
+    $ctrl->changerMdp();
+    exit;
+}
+if ($_POST['action'] === 'changer_conge') {
+    $ctrl->changerConge();
+    exit;
+}
+
 }
 
 /* GET */
 $page = $_GET['page'] ?? 'index';
-$allowed = ['index', 'etudiants', 'creer_etudiants','attestations'];
+$allowed = ['index', 'compte', 'creer_etudiants','attestations'];
 if (!in_array($page, $allowed)) {
     $page = 'index';
 }
