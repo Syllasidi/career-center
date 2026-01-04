@@ -237,7 +237,7 @@ public function proposerOffreAction(): void
         $_SESSION['error'] = $e->getMessage();
     }
 
-    // ⚠️ PAS DE HEADER / PAS DE REDIRECTION
-    // on reste sur la même page
+    header('Location: /public/entreprise/?page=etudiant');
+    exit;
 }
 }

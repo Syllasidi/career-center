@@ -1,23 +1,25 @@
 <?php
-/**
- * Vue : Attestations RC (remplacement secrétariat)
- * Rôle : Enseignant
- * Affichage uniquement
- */
+if (!isset($_SESSION)) {
+    session_start();
+}
 
 require_once __DIR__ . '/../../models/Enseignant.php';
+require_once __DIR__ . '/../../models/Attestation.php';
 
 $base = '/public';
-$model = new Enseignant();
 
-/**
- * Les méthodes sont prévues,
- * la validation sera implémentée plus tard
- */
-$secretaireAbsente = $model->toutesSecretairesEnConge();
-$attestations = $secretaireAbsente
-    ? $model->getAttestationsRCEnAttente()
-    : [];
+$ens = new Enseignant();
+if (!$ens->toutesSecretairesEnConge()) {
+    header('Location: /public/enseignant/?page=compte');
+    exit;
+}
+
+$model = new Attestation();
+$attestations = $model->getAttestationsEnAttente();
+
+$success = $_SESSION['success'] ?? null;
+$error   = $_SESSION['error'] ?? null;
+unset($_SESSION['success'], $_SESSION['error']);
 ?>
 
 <!DOCTYPE html>
@@ -29,70 +31,56 @@ $attestations = $secretaireAbsente
 </head>
 <body>
 
-<!-- ================= NAVBAR ================= -->
 <nav class="navbar">
     <div class="navbar-left">
         <h1>IDMC CAREER CENTER</h1>
-        <p>Espace Enseignant Responsable</p>
+        <p>Remplacement du secrétariat</p>
     </div>
-
     <div class="navbar-right">
         <a href="<?= $base ?>/enseignant/">Accueil</a>
-        <a href="<?= $base ?>/enseignant/?page=offres">Validation offres</a>
-        <a href="<?= $base ?>/enseignant/?page=affectations">Validation affectations</a>
-        <a href="<?= $base ?>/enseignant/?page=attestations">Attestations RC</a>
         <a href="<?= $base ?>/logout.php">Déconnexion</a>
     </div>
 </nav>
 
 <div class="container">
 
-    <div class="section">
-        <h3>Attestations de responsabilité civile</h3>
+<?php if ($success): ?>
+    <div class="success-notice"><?= htmlspecialchars($success) ?></div>
+<?php endif; ?>
 
-        <?php if (!$secretaireAbsente): ?>
-            <div class="alert-notice">
-                <p>
-                    Le secrétariat est actuellement en poste.
-                    La validation des attestations RC n’est pas accessible.
-                </p>
+<?php if ($error): ?>
+    <div class="error-notice"><?= htmlspecialchars($error) ?></div>
+<?php endif; ?>
+
+<div class="section">
+    <h3>Attestations RC en attente</h3>
+
+    <?php if (empty($attestations)): ?>
+        <p>Aucune attestation en attente.</p>
+    <?php else: ?>
+        <?php foreach ($attestations as $a): ?>
+            <div class="validation-card">
+                <p><strong>Étudiant :</strong> <?= htmlspecialchars($a['prenom'].' '.$a['nom']) ?></p>
+                <p><strong>Email :</strong> <?= htmlspecialchars($a['email']) ?></p>
+                <p><strong>Formation :</strong> <?= htmlspecialchars($a['formation']) ?></p>
+                <p><strong>Date dépôt :</strong> <?= htmlspecialchars($a['date_depot']) ?></p>
+
+                <form method="POST" action="<?= $base ?>/enseignant/">
+                    <input type="hidden" name="idattestation" value="<?= (int)$a['idattestation_rc'] ?>">
+
+                    <button class="btn-action" name="action" value="valider_attestation">
+                        Valider
+                    </button>
+
+                    <button class="btn-danger" name="action" value="rejeter_attestation">
+                        Rejeter
+                    </button>
+                </form>
             </div>
-        <?php else: ?>
-
-            <div class="alert-notice">
-                <p><strong>Remplacement du secrétariat</strong></p>
-                <p>Vous êtes autorisé à consulter les attestations RC en attente.</p>
-            </div>
-
-            <?php if (empty($attestations)): ?>
-                <p>Aucune attestation en attente.</p>
-            <?php else: ?>
-                <?php foreach ($attestations as $rc): ?>
-                    <div class="validation-card">
-                        <h4><?= htmlspecialchars($rc['etudiant']) ?></h4>
-
-                        <p><strong>Formation :</strong> <?= htmlspecialchars($rc['formation']) ?></p>
-                        <p><strong>Email :</strong> <?= htmlspecialchars($rc['email']) ?></p>
-                        <p>
-                            <strong>Période de validité :</strong>
-                            <?= htmlspecialchars($rc['date_debut_validite']) ?>
-                            →
-                            <?= htmlspecialchars($rc['date_fin_validite']) ?>
-                        </p>
-
-                        <!-- Actions prévues mais non actives -->
-                        <div class="validation-actions">
-                            <button class="btn-action" disabled>Valider</button>
-                            <button class="btn-danger" disabled>Refuser</button>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
-
-        <?php endif; ?>
-    </div>
-
+        <?php endforeach; ?>
+    <?php endif; ?>
 </div>
 
+</div>
 </body>
 </html>

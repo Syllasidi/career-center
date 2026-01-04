@@ -34,7 +34,8 @@ $home = match ($role) {
 require_once __DIR__ . '/../../models/Notification.php';
 
 $notificationModel = new Notification();
-$notifications = $notificationModel->getNotificationsByUtilisateur($idUtilisateur);
+$notifications = $notificationModel->getNotificationsPourUtilisateur($idUtilisateur, $role);
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">

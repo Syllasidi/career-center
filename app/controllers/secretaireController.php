@@ -144,4 +144,34 @@ public function changerConge(): void
     exit;
 }
 
+public function validerAttestation(): void
+{
+    require_once __DIR__ . '/../models/Attestation.php';
+
+    $attestation = new Attestation();
+
+    try {
+        $infos = $this->secretaireModel->getInfosCompte($_SESSION['user']['idutilisateur']);
+
+        if ($infos['en_conge']) {
+            throw new Exception("Vous êtes en congé.");
+        }
+
+        $attestation->validerAttestation(
+            (int)$_POST['idattestation'],
+            (int)$_SESSION['user']['idutilisateur'],
+            'SECRETAIRE'
+        );
+
+        $_SESSION['success'] = "Attestation validée.";
+
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
+    }
+
+    header('Location: /public/secretaire/?page=attestations');
+    exit;
+}
+
+
 }

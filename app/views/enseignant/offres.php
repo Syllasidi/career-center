@@ -4,7 +4,18 @@ require_once __DIR__ . '/../../models/Enseignant.php';
 $base = '/public';
 $model = new Enseignant();
 
-$offres = $model->getOffresAValider();
+/**
+ * Si idoffre est passé → on affiche UNE offre
+ * Sinon → toutes
+ */
+if (!empty($_GET['idoffre'])) {
+    $offres = array_filter(
+        $model->getToutesOffresAValider(),
+        fn($o) => $o['idoffre'] === (int)$_GET['idoffre']
+    );
+} else {
+    $offres = $model->getToutesOffresAValider();
+}
 ?>
 
 <!DOCTYPE html>
@@ -25,9 +36,6 @@ $offres = $model->getOffresAValider();
     <div class="navbar-right">
         <a href="<?= $base ?>/enseignant/">Accueil</a>
         <a href="<?= $base ?>/enseignant/?page=offres">Validation offres</a>
-        <a href="<?= $base ?>/enseignant/?page=affectations">Validation affectations</a>
-        <a href="<?= $base ?>/enseignant/?page=notifications">Notifications</a>
-        <a href="<?= $base ?>/enseignant/?page=compte">Compte</a>
         <a href="<?= $base ?>/logout.php">Déconnexion</a>
     </div>
 </nav>
@@ -49,18 +57,31 @@ $offres = $model->getOffresAValider();
                     </div>
 
                     <div class="validation-info">
-                        <p><strong>Entreprise :</strong> <?= htmlspecialchars($offre['entreprise']) ?></p>
-                        <p><strong>Ville :</strong> <?= htmlspecialchars($offre['ville']) ?></p>
-                        <p><strong>Durée :</strong> <?= htmlspecialchars($offre['duree']) ?> mois</p>
-                        <p><strong>Rémunération :</strong> <?= htmlspecialchars($offre['remuneration']) ?></p>
+                        <p><strong>Entreprise :</strong> <?= htmlspecialchars($offre['raison_sociale']) ?></p>
+                        <p><strong>Durée :</strong> <?= htmlspecialchars($offre['duree']) ?></p>
+                        <p><strong>Localisation :</strong> <?= htmlspecialchars($offre['localisation']) ?></p>
+                        <p><strong>Date de dépôt :</strong> <?= htmlspecialchars($offre['date_depot']) ?></p>
+                        <p><strong>Rémunération :</strong>
+                            <?= $offre['remuneration'] !== null
+                                ? htmlspecialchars($offre['remuneration']) . " €"
+                                : "—" ?>
+                        </p>
                     </div>
 
+                    <div class="detail-section">
+                        <h5>Description</h5>
+                        <p><?= htmlspecialchars($offre['description']) ?></p>
+                    </div>
+
+                    <!-- ACTIONS MÉTIER (ICI SEULEMENT) -->
                     <div class="validation-actions">
                         <form method="POST" action="<?= $base ?>/enseignant/">
-                            <input type="hidden" name="idOffre" value="<?= $offre['idoffre'] ?>">
+                            <input type="hidden" name="idOffre" value="<?= (int)$offre['idoffre'] ?>">
+
                             <button class="btn-action" name="action" value="valider_offre">
                                 Valider l’offre
                             </button>
+
                             <button class="btn-danger" name="action" value="rejeter_offre">
                                 Refuser l’offre
                             </button>
@@ -73,6 +94,5 @@ $offres = $model->getOffresAValider();
     </div>
 
 </div>
-
 </body>
 </html>

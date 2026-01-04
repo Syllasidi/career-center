@@ -86,7 +86,8 @@ class Candidature
         // Passage à validation enseignant
         $this->db->prepare("
             UPDATE candidature
-            SET statut_candidature = 'EN_VALIDATION_ENSEIGNANT'
+            SET statut_candidature = 'EN_VALIDATION_ENSEIGNANT',
+            date_mise_en_validation = CURRENT_DATE
             WHERE idcandidature = :id
         ")->execute(['id' => $idCandidature]);
 
@@ -115,13 +116,15 @@ class Candidature
             FROM enseignant
         ");
     }
-    public function proposerOffre(
+   public function proposerOffre(
     int $idOffre,
     int $idEtudiant,
     int $idEntreprise
 ): void {
 
-    // 🔐 Sécurité : l’offre doit appartenir à l’entreprise et être publiée
+    /* =========================
+       1️⃣ Sécurité : offre valide
+       ========================= */
     $stmt = $this->db->prepare("
         SELECT idoffre
         FROM offre
@@ -130,31 +133,35 @@ class Candidature
           AND statut_offre = 'PUBLIEE'
     ");
     $stmt->execute([
-        'idoffre' => $idOffre,
+        'idoffre'      => $idOffre,
         'idEntreprise' => $idEntreprise
     ]);
 
     if (!$stmt->fetch()) {
-        throw new Exception("Offre non autorisée.");
+        throw new Exception("Offre non autorisée ou non publiée.");
     }
 
-    // ❌ Empêcher doublon (même offre → même étudiant)
+    /* =========================
+       2️⃣ Anti-doublon métier
+       ========================= */
     $stmt = $this->db->prepare("
-        SELECT 1
+        SELECT idcandidature
         FROM candidature
         WHERE idoffre = :idoffre
           AND id_etudiant = :idEtudiant
     ");
     $stmt->execute([
-        'idoffre' => $idOffre,
+        'idoffre'    => $idOffre,
         'idEtudiant' => $idEtudiant
     ]);
 
     if ($stmt->fetch()) {
-        throw new Exception("Cette offre a déjà été proposée à cet étudiant.");
+        throw new Exception("Cet étudiant est déjà candidat à cette offre.");
     }
 
-    // 🧾 Création candidature (origine ENTREPRISE)
+    /* =========================
+       3️⃣ Création candidature
+       ========================= */
     $stmt = $this->db->prepare("
         INSERT INTO candidature (
             idoffre,
@@ -172,11 +179,13 @@ class Candidature
         )
     ");
     $stmt->execute([
-        'idoffre' => $idOffre,
+        'idoffre'    => $idOffre,
         'idEtudiant' => $idEtudiant
     ]);
 
-    // 🔔 Notification étudiant
+    /* =========================
+       4️⃣ Notification étudiant
+       ========================= */
     $stmt = $this->db->prepare("
         INSERT INTO notification (
             message,
@@ -195,7 +204,8 @@ class Candidature
     ");
     $stmt->execute([
         'idEtudiant' => $idEtudiant,
-        'idoffre' => $idOffre
+        'idoffre'    => $idOffre
     ]);
 }
+
 }

@@ -49,44 +49,62 @@ $offres = array_filter(
 
     <table class="offers-table">
         <thead>
-            <tr>
-                <th>Étudiant</th>
-                <th>Formation</th>
-                <th>Proposer une offre</th>
-            </tr>
-        </thead>
+    <tr>
+        <th>Étudiant</th>
+        <th>Formation</th>
+        <th>Compétences</th>
+        <th>Recherche active</th>
+        <th>Proposer une offre</th>
+    </tr>
+</thead>
+
         <tbody>
-        <?php foreach ($etudiants as $e): ?>
-            <tr>
-                <td><?= htmlspecialchars($e['nom'].' '.$e['prenom']) ?></td>
-                <td><?= htmlspecialchars($e['formation']) ?></td>
-                <td>
-                    <?php if (!empty($offres)): ?>
-                        <form method="POST" action="<?= $base ?>/entreprise/">
-                            <input type="hidden" name="id_etudiant" value="<?= (int)$e['idutilisateur'] ?>">
-                            <select name="idoffre" required>
-                                <option value="">— Choisir une offre —</option>
-                                <?php foreach ($offres as $o): ?>
-                                    <option value="<?= (int)$o['idoffre'] ?>">
-                                        <?= htmlspecialchars($o['titre']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <button
-                                type="submit"
-                                name="action"
-                                value="proposer_offre"
-                                class="btn-primary">
-                                Proposer
-                            </button>
-                        </form>
-                    <?php else: ?>
-                        Aucune offre publiée
-                    <?php endif; ?>
-                </td>
-            </tr>
-        <?php endforeach; ?>
-        </tbody>
+<?php foreach ($etudiants as $e): ?>
+    <tr>
+        <td><?= htmlspecialchars($e['nom'].' '.$e['prenom']) ?></td>
+
+        <td><?= htmlspecialchars($e['formation']) ?></td>
+
+        <td>
+            <?= !empty($e['competence'])
+                ? htmlspecialchars($e['competence'])
+                : '—' ?>
+        </td>
+
+        <td>
+            <?= $e['en_recherche_active']
+                ? '<span class="status status-active">Oui</span>'
+                : '<span class="status status-inactive">Non</span>' ?>
+        </td>
+
+        <td>
+            <?php if (!empty($offres)): ?>
+                <form method="POST" action="<?= $base ?>/entreprise/">
+                    <input type="hidden" name="id_etudiant" value="<?= (int)$e['idutilisateur'] ?>">
+                    <select name="idoffre" required>
+                        <option value="">— Choisir une offre —</option>
+                        <?php foreach ($offres as $o): ?>
+                            <option value="<?= (int)$o['idoffre'] ?>">
+                                <?= htmlspecialchars($o['titre']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button
+                        type="submit"
+                        name="action"
+                        value="proposer_offre"
+                        class="btn-primary">
+                        Proposer
+                    </button>
+                </form>
+            <?php else: ?>
+                Aucune offre publiée
+            <?php endif; ?>
+        </td>
+    </tr>
+<?php endforeach; ?>
+</tbody>
+
     </table>
 
 </div>

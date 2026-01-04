@@ -37,6 +37,11 @@ $regles = $model->getToutesReglementations();
 </nav>
 
 <div class="container">
+<?php
+$success = $_SESSION['success'] ?? null;
+$error   = $_SESSION['error'] ?? null;
+unset($_SESSION['success'], $_SESSION['error']);
+?>
 
     <div class="section">
         <h3>Réglementation des offres</h3>

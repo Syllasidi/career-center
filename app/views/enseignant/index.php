@@ -21,7 +21,10 @@ $idEnseignant = (int)($_SESSION['user']['idutilisateur'] ?? 0);
 $model = new Enseignant();
 
 $stats = $model->getStats($idEnseignant);
-$offresAValider = $model->getOffresAValider();
+$offresAValider = $model->getDernieresOffresAValider(3);
+$affectations   = $model->getAffectationsApercu($idEnseignant);
+$historique = $model->getHistoriqueValidations($idEnseignant, 5);
+
 
 // navbar notif (simple)
 $notifCount = $model->countNotifications($idEnseignant);
@@ -115,74 +118,101 @@ unset($_SESSION['success'], $_SESSION['error']);
 
     <!-- ======= OFFRES À VALIDER ======= -->
     <div class="section">
-        <h3>Offres en attente de validation</h3>
+    <h3>Dernières offres en attente de validation</h3>
 
-        <?php if (empty($offresAValider)): ?>
-            <div class="info-notice">
-                <p>Aucune offre en attente.</p>
-            </div>
-        <?php else: ?>
-            <?php foreach ($offresAValider as $o): ?>
-                <div class="validation-card">
-                    <div class="validation-card-header">
-                        <h4><?= htmlspecialchars($o['titre']) ?></h4>
-                        <span class="offer-type-badge"><?= htmlspecialchars($o['type_contrat']) ?></span>
-                    </div>
+    <?php if (empty($offresAValider)): ?>
+        <div class="info-notice">
+            <p>Aucune offre en attente.</p>
+        </div>
+    <?php else: ?>
+        <?php foreach ($offresAValider as $o): ?>
+            <div class="validation-card">
 
-                    <div class="validation-info">
-                        <p><strong>Entreprise :</strong> <?= htmlspecialchars($o['raison_sociale']) ?></p>
-                        <p><strong>Durée :</strong> <?= htmlspecialchars($o['duree'] ?? '—') ?></p>
-                        <p><strong>Localisation :</strong> <?= htmlspecialchars($o['localisation'] ?? '—') ?></p>
-                        <p><strong>Date de dépôt :</strong> <?= htmlspecialchars($o['date_depot'] ?? '—') ?></p>
-                        <p><strong>Rémunération :</strong>
-                            <?= $o['remuneration'] !== null ? htmlspecialchars($o['remuneration']) . " €" : "—" ?>
-                        </p>
-                    </div>
-
-                    <div class="detail-section">
-                        <h5>Description</h5>
-                        <p>
-                            <?= !empty($o['description']) ? htmlspecialchars($o['description']) : "Description non renseignée." ?>
-                        </p>
-                    </div>
-
-                    <div class="validation-actions">
-                        <!-- VALIDER -->
-                        <form method="POST" action="<?= $base ?>/enseignant/" style="display:inline;">
-                            <input type="hidden" name="action" value="valider_offre">
-                            <input type="hidden" name="idoffre" value="<?= (int)$o['idoffre'] ?>">
-                            <button class="btn-action" type="submit">Valider l'offre</button>
-                        </form>
-
-                        <!-- REFUSER -->
-                        <form method="POST" action="<?= $base ?>/enseignant/" style="display:inline;">
-                            <input type="hidden" name="action" value="rejeter_offre">
-                            <input type="hidden" name="idoffre" value="<?= (int)$o['idoffre'] ?>">
-                            <button class="btn-danger" type="submit">Refuser l'offre</button>
-                        </form>
-                    </div>
+                <div class="validation-card-header">
+                    <h4><?= htmlspecialchars($o['titre']) ?></h4>
+                    <span class="offer-type-badge"><?= htmlspecialchars($o['type_contrat']) ?></span>
                 </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
+
+                <div class="validation-info">
+                    <p><strong>Entreprise :</strong> <?= htmlspecialchars($o['raison_sociale']) ?></p>
+                    <p><strong>Durée :</strong> <?= htmlspecialchars($o['duree']) ?></p>
+                    <p><strong>Localisation :</strong> <?= htmlspecialchars($o['localisation']) ?></p>
+                    <p><strong>Date de dépôt :</strong> <?= htmlspecialchars($o['date_depot']) ?></p>
+                    <p><strong>Rémunération :</strong>
+                        <?= $o['remuneration'] !== null ? htmlspecialchars($o['remuneration']) . " €" : "—" ?>
+                    </p>
+                </div>
+
+                <div class="detail-section">
+                    <h5>Description</h5>
+                    <p><?= htmlspecialchars($o['description']) ?></p>
+                </div>
+
+                <!-- ACTION = REDIRECTION -->
+                <div class="validation-actions">
+                    <a class="btn-action"
+                       href="<?= $base ?>/enseignant/?page=offres&idoffre=<?= (int)$o['idoffre'] ?>">
+                        Voir / traiter l’offre
+                    </a>
+                </div>
+
+            </div>
+        <?php endforeach; ?>
+
+        <div style="margin-top:15px;">
+            <a href="<?= $base ?>/enseignant/?page=offres">
+                ➜ Voir toutes les offres à valider
+            </a>
+        </div>
+
+    <?php endif; ?>
+</div>
+
 
     <!-- ======= AFFECTATIONS (placeholder) ======= -->
     <div class="section">
-        <h3>Affectations en attente de validation</h3>
+    <h3>Affectations en attente de validation</h3>
 
-        <div class="alert-notice">
-            <p><strong>Validation des affectations :</strong></p>
-            <p>
-                Une fois qu'une entreprise accepte la candidature d'un étudiant,
-                l'affectation doit être validée par l'enseignant responsable.
-                (Cette partie sera branchée après.)
-            </p>
-        </div>
-
+    <?php if (empty($affectations)): ?>
         <div class="info-notice">
-            <p>Aucune affectation en attente pour le moment.</p>
+            <p>Aucune affectation en attente.</p>
         </div>
-    </div>
+    <?php else: ?>
+        <table class="offers-table">
+            <thead>
+                <tr>
+                    <th>Étudiant</th>
+                    <th>Formation</th>
+                    <th>Offre</th>
+                    <th>Date</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($affectations as $a): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($a['prenom'] . ' ' . $a['nom']) ?></td>
+                        <td><?= htmlspecialchars($a['formation']) ?></td>
+                        <td><?= htmlspecialchars($a['offre']) ?></td>
+                        <td><?= htmlspecialchars($a['date_mise_en_validation']) ?></td>
+                        <td>
+                            <a href="<?= $base ?>/enseignant/?page=affectations&idcandidature=<?= (int)$a['idcandidature'] ?>">
+                                Voir / traiter
+                            </a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <div style="margin-top:15px;">
+            <a href="<?= $base ?>/enseignant/?page=affectations">
+                ➜ Voir toutes les affectations
+            </a>
+        </div>
+    <?php endif; ?>
+</div>
+
     <h3 style="margin-top: 30px; font-size: 18px;">Historique des validations récentes</h3>
 
 <table class="offers-table">

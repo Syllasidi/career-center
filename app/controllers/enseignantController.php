@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../models/Enseignant.php';
+require_once __DIR__ . '/../models/Attestation.php';
 
 class EnseignantController
 {
@@ -86,4 +87,127 @@ class EnseignantController
         header('Location: /public/enseignant/?page=compte');
         exit;
     }
+
+
+    public function validerAffectation(): void
+{
+    try {
+        $this->model->validerAffectation((int)$_POST['idcandidature'],
+    (int)$_SESSION['user']['idutilisateur']
+);
+        $_SESSION['success'] = "Affectation validée avec succès.";
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
+    }
+
+    header('Location: /public/enseignant/?page=affectations');
+    exit;
+}
+
+public function rejeterAffectation(): void
+{
+    try {
+        $this->model->rejeterAffectation((int)$_POST['idcandidature'],
+    (int)$_SESSION['user']['idutilisateur']
+);
+        $_SESSION['success'] = "Affectation rejetée.";
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
+    }
+
+    header('Location: /public/enseignant/?page=affectations');
+    exit;
+}
+public function validerAffectationUrgente(): void
+{
+    try {
+        $this->model->validerAffectationUrgente(
+            (int)$_POST['idcandidature'],
+            (int)$_SESSION['user']['idutilisateur']
+        );
+
+        $_SESSION['success'] = "Affectation urgente validée. Vous êtes désormais responsable.";
+
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
+    }
+
+    header('Location: /public/enseignant/?page=affectations');
+    exit;
+}
+public function declencherRelances(): void
+{
+    $this->model->envoyerRelancesAffectations();
+}
+
+/* =========================
+   MODIFIER RÈGLEMENTATION
+   ========================= */
+public function modifierReglementation(): void
+{
+    try {
+        require_once __DIR__ . '/../models/Reglementation.php';
+        $model = new Reglementation();
+
+        $model->mettreAJourReglementation(
+            (int) $_POST['idReglementation'],
+            (int) $_POST['duree_min'],
+            (int) $_POST['duree_max'],
+            (float) $_POST['remuneration_min']
+        );
+
+        $_SESSION['success'] = "Réglementation mise à jour avec succès.";
+
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
+    }
+
+    header('Location: /public/enseignant/?page=reglementation');
+    exit;
+}
+
+
+
+public function accederAttestations(): void
+{
+    header('Location: /public/enseignant/?page=attestations');
+    exit;
+}
+
+public function validerAttestation(): void
+{
+    try {
+        $att = new Attestation();
+        $att->validerAttestation(
+    (int)$_POST['idattestation'],
+    (int)$_SESSION['user']['idutilisateur'],
+    $_SESSION['user']['role']
+);
+
+        $_SESSION['success'] = "Attestation validée.";
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
+    }
+
+    header('Location: /public/enseignant/?page=attestations');
+    exit;
+}
+
+public function rejeterAttestation(): void
+{
+    try {
+        $att = new Attestation();
+        $att->rejeterAttestation((int)$_POST['idattestation'],
+            (int)$_SESSION['user']['idutilisateur'] );
+
+        $_SESSION['success'] = "Attestation rejetée.";
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
+    }
+
+    header('Location: /public/enseignant/?page=attestations');
+    exit;
+}
+
+
 }

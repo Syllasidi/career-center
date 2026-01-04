@@ -10,7 +10,7 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'ENSEIGNANT') {
    TRAITEMENT POST
    ===================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  
+
     require_once __DIR__ . '/../../app/controllers/EnseignantController.php';
     $controller = new EnseignantController();
 
@@ -22,13 +22,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($_POST['action'] === 'rejeter_offre') {
         $controller->rejeterOffre();
         exit;
-         /* require_once __DIR__ . '/../../app/controllers/secretaireController.php';
-    $ctrl = new secretaireController();*/
+    }
+
     if ($_POST['action'] === 'changer_mdp') {
-        $ctrl->changerMdp();
+        $controller->changerMdp();
         exit;
     }
-}}
+    if ($_POST['action'] === 'valider_affectation') {
+    $controller->validerAffectation();
+    exit;
+}
+
+if ($_POST['action'] === 'rejeter_affectation') {
+    $controller->rejeterAffectation();
+    exit;
+}
+if ($_POST['action'] === 'valider_affectation_urgente') {
+    $controller->validerAffectationUrgente();
+    exit;
+}
+if ($_POST['action'] === 'modifier_reglementation') {
+    $controller->modifierReglementation();
+    exit;
+}
+if ($_POST['action'] === 'acceder_attestations') {
+    $controller->accederAttestations();
+}
+
+if ($_POST['action'] === 'valider_attestation') {
+    $controller->validerAttestation();
+}
+
+if ($_POST['action'] === 'rejeter_attestation') {
+    $controller->rejeterAttestation();
+}
+
+
+
+}
+require_once __DIR__ . '/../../app/controllers/EnseignantController.php';
+
+$controller = new EnseignantController();
+
+// 🔔 déclenchement automatique
+$controller->declencherRelances();
+
 
 /* =====================
    AFFICHAGE VUE

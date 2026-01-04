@@ -73,68 +73,158 @@ class Enseignant
      * - EN_ATTENTE_VALIDATION
      * - id_enseignant IS NULL (pas encore responsable)
      */
-    public function getOffresAValider(): array
-    {
-        $sql = "
-            SELECT
-                o.idoffre,
-                o.titre,
-                o.type_contrat,
-                o.pays,
-                o.ville,
-                o.date_debut,
-                o.date_fin,
-                o.remuneration,
-                o.date_validation ,
-                u.nom AS nom_entreprise,
-                u.prenom AS prenom_entreprise,
-                e.raison_sociale
-            FROM offre o
-            JOIN entreprise e ON e.idutilisateur = o.id_entreprise
-            JOIN utilisateur u ON u.idutilisateur = e.idutilisateur
-            WHERE o.statut_offre = 'EN_ATTENTE_VALIDATION'
-              AND o.id_enseignant IS NULL
-            ORDER BY o.idoffre DESC
-        ";
+   public function getDernieresOffresAValider(int $limit = 3): array
+{
+    $sql = "
+        SELECT
+            o.idoffre,
+            o.titre,
+            o.description,
+            o.type_contrat,
+            o.pays,
+            o.ville,
+            o.date_debut,
+            o.date_fin,
+            o.remuneration,
+            o.date_mise_en_validation,
+            e.raison_sociale
+        FROM offre o
+        JOIN entreprise e ON e.idutilisateur = o.id_entreprise
+        WHERE o.statut_offre = 'EN_ATTENTE_VALIDATION'
+          AND o.id_enseignant IS NULL
+        ORDER BY o.date_mise_en_validation DESC
+        LIMIT :limit
+    ";
 
-        $rows = $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    $stmt = $this->db->prepare($sql);
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
 
-        $result = [];
-        foreach ($rows as $r) {
-            // badge type contrat
-            $typeBadge = $r['type_contrat'];
+    return $this->mapperOffres($stmt->fetchAll(PDO::FETCH_ASSOC));
+}
 
-            // durée (simple, en mois)
-            $dureeLabel = '';
-            if (!empty($r['date_debut']) && !empty($r['date_fin'])) {
-                try {
-                    $d1 = new DateTime($r['date_debut']);
-                    $d2 = new DateTime($r['date_fin']);
-                    $int = $d1->diff($d2);
-                    $mois = ($int->y * 12) + $int->m;
-                    $dureeLabel = $mois . " mois";
-                } catch (Exception $e) {
-                    $dureeLabel = "—";
-                }
-            } else {
-                $dureeLabel = "—";
-            }
+public function getToutesOffresAValider(): array
+{
+    $sql = "
+        SELECT
+            o.idoffre,
+            o.titre,
+            o.description,
+            o.type_contrat,
+            o.pays,
+            o.ville,
+            o.date_debut,
+            o.date_fin,
+            o.remuneration,
+            o.date_mise_en_validation,
+            e.raison_sociale
+        FROM offre o
+        JOIN entreprise e ON e.idutilisateur = o.id_entreprise
+        WHERE o.statut_offre = 'EN_ATTENTE_VALIDATION'
+          AND o.id_enseignant IS NULL
+        ORDER BY o.date_mise_en_validation DESC
+    ";
 
-            $result[] = [
-                'idoffre'          => (int)$r['idoffre'],
-                'titre'            => $r['titre'],
-                'type_contrat'     => $typeBadge,
-                'raison_sociale'   => $r['raison_sociale'] ?: (($r['nom_entreprise'] ?? '') . ' ' . ($r['prenom_entreprise'] ?? '')),
-                'localisation'     => trim(($r['ville'] ?? '') . ' ' . (($r['pays'] ?? '') === 'ETRANGER' ? '(Étranger)' : '')),
-                'duree'            => $dureeLabel,
-                'remuneration'     => $r['remuneration'],
-                'date_depot'       => $r['date_mise_en_validation'] ?? null,
-                'description'      => '' // on branchera si tu veux afficher description complète
-            ];
+    return $this->mapperOffres(
+        $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC)
+    );
+}
+
+public function getAffectationsApercu(int $idEnseignant): array
+{
+    $sql = "
+        SELECT
+            c.idcandidature,
+            u.nom,
+            u.prenom,
+            e.formation,
+            o.titre AS offre,
+            c.date_mise_en_validation
+        FROM candidature c
+        JOIN offre o ON o.idoffre = c.idoffre
+        JOIN etudiant e ON e.idutilisateur = c.id_etudiant
+        JOIN utilisateur u ON u.idutilisateur = e.idutilisateur
+        WHERE c.statut_candidature = 'EN_VALIDATION_ENSEIGNANT'
+          AND o.id_enseignant = :idEns
+        ORDER BY c.date_mise_en_validation ASC
+    ";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute(['idEns' => $idEnseignant]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+public function getAffectationsAValider(int $idEnseignant): array
+{
+    $sql = "
+        SELECT
+            c.idcandidature,
+            c.date_mise_en_validation,
+
+            u.nom,
+            u.prenom,
+            u.email,
+            e.formation,
+
+            o.titre AS offre,
+            o.type_contrat,
+
+            ent.raison_sociale AS entreprise
+
+        FROM candidature c
+        JOIN offre o ON o.idoffre = c.idoffre
+        JOIN entreprise ent ON ent.idutilisateur = o.id_entreprise
+        JOIN etudiant e ON e.idutilisateur = c.id_etudiant
+        JOIN utilisateur u ON u.idutilisateur = e.idutilisateur
+
+        WHERE c.statut_candidature = 'EN_VALIDATION_ENSEIGNANT'
+          AND o.id_enseignant = :idEns 
+          AND c.date_mise_en_validation > CURRENT_DATE - INTERVAL '3 days'
+
+
+        ORDER BY c.date_mise_en_validation ASC
+    ";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute(['idEns' => $idEnseignant]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+private function mapperOffres(array $rows): array
+{
+    $result = [];
+
+    foreach ($rows as $r) {
+        // durée en mois
+        $duree = '—';
+        if (!empty($r['date_debut']) && !empty($r['date_fin'])) {
+            try {
+                $d1 = new DateTime($r['date_debut']);
+                $d2 = new DateTime($r['date_fin']);
+                $i  = $d1->diff($d2);
+                $duree = (($i->y * 12) + $i->m) . ' mois';
+            } catch (Exception $e) {}
         }
 
-        return $result;
+        $result[] = [
+            'idoffre'        => (int)$r['idoffre'],
+            'titre'          => $r['titre'],
+            'description'    => $r['description'],
+            'type_contrat'   => $r['type_contrat'],
+            'raison_sociale' => $r['raison_sociale'],
+            'localisation'   => trim($r['ville'] . ' ' . ($r['pays'] === 'ETRANGER' ? '(Étranger)' : '')),
+            'duree'          => $duree,
+            'remuneration'   => $r['remuneration'],
+            'date_depot'     => $r['date_mise_en_validation']
+        ];
     }
+
+    return $result;
+}
+
+
 
     /**
      * ======================================
@@ -353,6 +443,376 @@ public function getAttestationsRCEnAttente(): array
     ";
 
     return $this->db->query($sql)->fetchAll();
+}
+
+
+public function getHistoriqueValidations(int $idEnseignant, int $limit = 10): array
+{
+    $historique = [];
+
+    /**
+     * ============================
+     * 1) HISTORIQUE DES OFFRES
+     * ============================
+     */
+    $sqlOffres = "
+        SELECT
+            o.date_validation        AS date_action,
+            'Offre'                  AS type,
+            o.titre                  AS objet,
+            e.raison_sociale         AS acteur,
+            o.statut_offre           AS statut
+        FROM offre o
+        JOIN entreprise e ON e.idutilisateur = o.id_entreprise
+        WHERE o.id_enseignant = :idEns
+          AND o.statut_offre IN ('VALIDEE', 'REJETTEE')
+          AND o.date_validation IS NOT NULL
+    ";
+
+    $stmt = $this->db->prepare($sqlOffres);
+    $stmt->execute(['idEns' => $idEnseignant]);
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $historique[] = [
+            'date'         => $r['date_action'],
+            'type'         => $r['type'],
+            'objet'        => $r['objet'],
+            'acteur'       => $r['acteur'],
+            'action'       => $r['statut'] === 'VALIDEE' ? 'Validation' : 'Refus',
+            'status_label' => $r['statut'],
+            'status_class' => $r['statut'] === 'VALIDEE'
+                ? 'status-validated'
+                : 'status-rejected'
+        ];
+    }
+
+    /**
+     * ================================
+     * 2) HISTORIQUE DES AFFECTATIONS
+     * ================================
+     * Base : statut_candidature
+     * Date utilisée : date_mise_en_validation
+     */
+    $sqlAffectations = "
+        SELECT
+            c.date_mise_en_validation AS date_action,
+            'Affectation'             AS type,
+            o.titre                   AS objet,
+            u.nom || ' ' || u.prenom  AS acteur,
+            c.statut_candidature      AS statut
+        FROM candidature c
+        JOIN offre o ON o.idoffre = c.idoffre
+        JOIN etudiant et ON et.idutilisateur = c.id_etudiant
+        JOIN utilisateur u ON u.idutilisateur = et.idutilisateur
+        WHERE o.id_enseignant = :idEns
+          AND c.statut_candidature IN ('AFFECTEE', 'REJETEE')
+          AND c.date_mise_en_validation IS NOT NULL
+    ";
+
+    $stmt = $this->db->prepare($sqlAffectations);
+    $stmt->execute(['idEns' => $idEnseignant]);
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $historique[] = [
+            'date'         => $r['date_action'],
+            'type'         => $r['type'],
+            'objet'        => $r['objet'],
+            'acteur'       => $r['acteur'],
+            'action'       => $r['statut'] === 'AFFECTEE' ? 'Validation' : 'Refus',
+            'status_label' => $r['statut'],
+            'status_class' => $r['statut'] === 'AFFECTEE'
+                ? 'status-validated'
+                : 'status-rejected'
+        ];
+    }
+
+    /**
+     * ============================
+     * 3) TRI + LIMITE
+     * ============================
+     */
+    usort($historique, function ($a, $b) {
+        return strtotime($b['date']) <=> strtotime($a['date']);
+    });
+
+    return array_slice($historique, 0, $limit);
+}
+
+
+public function validerAffectation(int $idCandidature, int $idEnseignant): void
+{
+    $this->db->beginTransaction();
+
+    try {
+        $stmt = $this->db->prepare("
+            SELECT
+                c.idcandidature,
+                c.statut_candidature,
+                c.id_etudiant,
+                o.id_entreprise,
+                o.titre
+            FROM candidature c
+            JOIN offre o ON o.idoffre = c.idoffre
+            WHERE c.idcandidature = :id
+            FOR UPDATE
+        ");
+        $stmt->execute(['id' => $idCandidature]);
+        $cand = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$cand) {
+            throw new Exception("Affectation introuvable.");
+        }
+
+        if ($cand['statut_candidature'] !== 'EN_VALIDATION_ENSEIGNANT') {
+            throw new Exception("Cette affectation n’est plus en attente.");
+        }
+
+        // 1️⃣ Validation
+        $stmt = $this->db->prepare("
+            UPDATE candidature
+            SET statut_candidature = 'AFFECTEE'
+            WHERE idcandidature = :id
+        ");
+        $stmt->execute(['id' => $idCandidature]);
+
+        // 2️⃣ Notification ÉTUDIANT
+        $stmt = $this->db->prepare("
+            INSERT INTO notification (message, type, idutilisateur, idcandidature)
+            VALUES (:msg, 'AFFECTATION_VALIDEE', :idUser, :idCand)
+        ");
+        $stmt->execute([
+            'msg'    => "Votre candidature pour l’offre « {$cand['titre']} » a été validée.",
+            'idUser' => $cand['id_etudiant'],
+            'idCand' => $idCandidature
+        ]);
+
+        // 3️⃣ Notification ENTREPRISE
+        $stmt->execute([
+            'msg'    => "L’affectation pour l’offre « {$cand['titre']} » a été validée par l’enseignant.",
+            'idUser' => $cand['id_entreprise'],
+            'idCand' => $idCandidature
+        ]);
+
+        $this->db->commit();
+
+    } catch (Exception $e) {
+        $this->db->rollBack();
+        throw $e;
+    }
+}
+public function rejeterAffectation(int $idCandidature, int $idEnseignant): void
+{
+    $this->db->beginTransaction();
+
+    try {
+        $stmt = $this->db->prepare("
+            SELECT
+                c.idcandidature,
+                c.statut_candidature,
+                c.id_etudiant,
+                o.id_entreprise,
+                o.titre
+            FROM candidature c
+            JOIN offre o ON o.idoffre = c.idoffre
+            WHERE c.idcandidature = :id
+            FOR UPDATE
+        ");
+        $stmt->execute(['id' => $idCandidature]);
+        $cand = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$cand) {
+            throw new Exception("Affectation introuvable.");
+        }
+
+        if ($cand['statut_candidature'] !== 'EN_VALIDATION_ENSEIGNANT') {
+            throw new Exception("Cette affectation n’est plus en attente.");
+        }
+
+        // 1️⃣ Rejet
+        $stmt = $this->db->prepare("
+            UPDATE candidature
+            SET statut_candidature = 'REJETEE'
+            WHERE idcandidature = :id
+        ");
+        $stmt->execute(['id' => $idCandidature]);
+
+        // 2️⃣ Notification ÉTUDIANT
+        $stmt = $this->db->prepare("
+            INSERT INTO notification (message, type, idutilisateur, idcandidature)
+            VALUES (:msg, 'AFFECTATION_REJETEE', :idUser, :idCand)
+        ");
+        $stmt->execute([
+            'msg'    => "Votre candidature pour l’offre « {$cand['titre']} » a été rejetée.",
+            'idUser' => $cand['id_etudiant'],
+            'idCand' => $idCandidature
+        ]);
+
+        // 3️⃣ Notification ENTREPRISE
+        $stmt->execute([
+            'msg'    => "L’affectation pour l’offre « {$cand['titre']} » a été rejetée par l’enseignant.",
+            'idUser' => $cand['id_entreprise'],
+            'idCand' => $idCandidature
+        ]);
+
+        $this->db->commit();
+
+    } catch (Exception $e) {
+        $this->db->rollBack();
+        throw $e;
+    }
+}
+
+
+private int $delaiUrgence = 7; // jours
+public function getAffectationsUrgentes(): array
+{
+    $sql = "
+        SELECT
+            c.idcandidature,
+            u.nom || ' ' || u.prenom AS etudiant,
+            u.email AS email_etudiant,
+            e.formation,
+            o.titre AS offre,
+            ent.raison_sociale AS entreprise,
+            o.type_contrat,
+            c.date_mise_en_validation
+        FROM candidature c
+        JOIN offre o ON o.idoffre = c.idoffre
+        JOIN etudiant e ON e.idutilisateur = c.id_etudiant
+        JOIN utilisateur u ON u.idutilisateur = e.idutilisateur
+        JOIN entreprise ent ON ent.idutilisateur = o.id_entreprise
+        WHERE c.statut_candidature = 'EN_VALIDATION_ENSEIGNANT'
+          AND c.date_mise_en_validation <= CURRENT_DATE - INTERVAL '3 days'
+        ORDER BY c.date_mise_en_validation ASC
+    ";
+
+    return $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+}
+public function validerAffectationUrgente(int $idCandidature, int $idNouvelEnseignant): void
+{
+    $this->db->beginTransaction();
+
+    try {
+        $stmt = $this->db->prepare("
+            SELECT
+                c.idcandidature,
+                c.statut_candidature,
+                c.id_etudiant,
+                o.idoffre,
+                o.id_entreprise,
+                o.titre
+            FROM candidature c
+            JOIN offre o ON o.idoffre = c.idoffre
+            WHERE c.idcandidature = :id
+            FOR UPDATE
+        ");
+        $stmt->execute(['id' => $idCandidature]);
+        $c = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$c || $c['statut_candidature'] !== 'EN_VALIDATION_ENSEIGNANT') {
+            throw new Exception("Affectation non valide.");
+        }
+
+        // 1️⃣ enseignant reprend l’offre
+        $this->db->prepare("
+            UPDATE offre
+            SET id_enseignant = :ens
+            WHERE idoffre = :idoffre
+        ")->execute([
+            'ens'     => $idNouvelEnseignant,
+            'idoffre'=> $c['idoffre']
+        ]);
+
+        // 2️⃣ affectation validée
+        $this->db->prepare("
+            UPDATE candidature
+            SET statut_candidature = 'AFFECTEE'
+            WHERE idcandidature = :id
+        ")->execute(['id' => $idCandidature]);
+
+        // 3️⃣ notifications
+        $this->notifierAffectation($c, true);
+
+        $this->db->commit();
+
+    } catch (Exception $e) {
+        $this->db->rollBack();
+        throw $e;
+    }
+}
+private function notifierAffectation(array $c, bool $urgent = false): void
+{
+    $label = $urgent ? " (URGENT)" : "";
+
+    // étudiant
+    $this->db->prepare("
+        INSERT INTO notification (message, type, idutilisateur, idcandidature)
+        VALUES (:msg, 'AFFECTATION_VALIDEE', :idUser, :idCand)
+    ")->execute([
+        'msg'    => "Votre affectation{$label} pour l’offre « {$c['titre']} » a été validée.",
+        'idUser' => $c['id_etudiant'],
+        'idCand' => $c['idcandidature']
+    ]);
+
+    // entreprise
+    $this->db->prepare("
+        INSERT INTO notification (message, type, idutilisateur, idcandidature)
+        VALUES (:msg, 'AFFECTATION_VALIDEE', :idUser, :idCand)
+    ")->execute([
+        'msg'    => "Affectation{$label} validée pour l’offre « {$c['titre']} ».",
+        'idUser' => $c['id_entreprise'],
+        'idCand' => $c['idcandidature']
+    ]);
+}
+
+
+
+public function envoyerRelancesAffectations(): void
+{
+    $sql = "
+        INSERT INTO notification (message, type, idutilisateur, idcandidature)
+        SELECT
+            'Rappel : une affectation est en attente de validation depuis 48h.',
+            'RELANCE_AFFECTATION',
+            o.id_enseignant,
+            c.idcandidature
+        FROM candidature c
+        JOIN offre o ON o.idoffre = c.idoffre
+        WHERE c.statut_candidature = 'EN_VALIDATION_ENSEIGNANT'
+          AND c.date_mise_en_validation = CURRENT_DATE - INTERVAL '2 days'
+          AND o.id_enseignant IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM notification n
+              WHERE n.type = 'RELANCE_AFFECTATION'
+                AND n.idcandidature = c.idcandidature
+          )
+    ";
+
+    $this->db->exec($sql);
+}
+
+
+public function changerMotDePasse(int $idUtilisateur, string $mdp): bool
+{
+    try {
+        $hash = password_hash($mdp, PASSWORD_DEFAULT);
+
+        $stmt = $this->db->prepare("
+            UPDATE compte
+            SET mdp = :mdp
+            WHERE idutilisateur = :id
+        ");
+
+        $stmt->execute([
+            'mdp' => $hash,
+            'id'  => $idUtilisateur
+        ]);
+
+        return true;
+
+    } catch (Exception $e) {
+        return false;
+    }
 }
 
 }

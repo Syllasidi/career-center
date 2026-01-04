@@ -30,12 +30,22 @@ if ($_POST['action'] === 'changer_conge') {
     $ctrl->changerConge();
     exit;
 }
+if ($_POST['action'] === 'valider_attestation') {
+    $controller->validerAttestation();
+    exit;
+}
+
+if ($_POST['action'] === 'refuser_attestation') {
+    $controller->refuserAttestation();
+    exit;
+}
+
 
 }
 
 /* GET */
 $page = $_GET['page'] ?? 'index';
-$allowed = ['index', 'compte', 'creer_etudiants','attestations'];
+$allowed = ['index', 'compte', 'creer_etudiants','attestations','notifications'];
 if (!in_array($page, $allowed)) {
     $page = 'index';
 }

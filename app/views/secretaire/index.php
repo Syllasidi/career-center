@@ -9,7 +9,7 @@
  */
 
 require_once __DIR__ . '/../../models/Secretaire.php';
-
+require_once __DIR__ . '/../../models/Attestation.php';
 $base = '/public';
 
 // Instanciation du modèle
@@ -17,8 +17,14 @@ $secretaireModel = new Secretaire();
 
 // Données (branchées plus tard sur la base)
 $stats        = $secretaireModel->getStats();
-$attestations = $secretaireModel->getAttestationsEnAttente();
+
 $etudiants    = $secretaireModel->getEtudiants();
+$attestationModel = new Attestation();
+$attestations = array_slice(
+    $attestationModel->getAttestationsEnAttente(),
+    0,
+    5
+);
 
 // Sécurité valeurs par défaut
 $totalEtudiants   = $stats['total_etudiants'] ?? 0;
@@ -45,6 +51,7 @@ $rcValidees       = $stats['rc_validees'] ?? 0;
     <div class="navbar-right">
         <a href="<?= $base ?>/secretaire/?page=creer_etudiants">Créer des étudiants</a>
         <a href="<?= $base ?>/secretaire/?page=attestations">Attestations RC</a>
+        <a href="<?= $base ?>/secretaire/?page=notifications">Notifications</a>
         <a href="<?= $base ?>/secretaire/?page=compte">Compte</a>
         <a href="<?= $base ?>/logout.php">Déconnexion</a>
     </div>
@@ -81,39 +88,37 @@ $rcValidees       = $stats['rc_validees'] ?? 0;
     </div>
 
     <!-- ================= ATTESTATIONS RC ================= -->
-    <div class="section">
-        <h3>Attestations de responsabilité civile en attente</h3>
+    <<div class="section">
+    <h3>Attestations RC en attente (aperçu)</h3>
 
-        <?php if (empty($attestations)): ?>
-            <div class="info-notice">
-                <p>Aucune attestation en attente.</p>
-            </div>
-        <?php else: ?>
-            <?php foreach ($attestations as $rc): ?>
-                <div class="rc-card">
-                    <div class="rc-card-header">
-                        <h4><?= htmlspecialchars($rc['nom_prenom']) ?></h4>
-                        <span class="status status-pending">En attente</span>
-                    </div>
-
-                    <div class="rc-info">
-                        <p><strong>Formation :</strong> <?= htmlspecialchars($rc['formation']) ?></p>
-                        <p><strong>Email :</strong> <?= htmlspecialchars($rc['email']) ?></p>
-                        <p><strong>Date de dépôt :</strong> <?= htmlspecialchars($rc['date_depot']) ?></p>
-                        <p><strong>Période de validité :</strong>
-                            <?= htmlspecialchars($rc['date_debut']) ?> -
-                            <?= htmlspecialchars($rc['date_fin']) ?>
-                        </p>
-                    </div>
-
-                    <div class="rc-actions">
-                        <button class="btn-action">Valider</button>
-                        <button class="btn-danger">Refuser</button>
-                    </div>
+    <?php if (empty($attestations)): ?>
+        <div class="info-notice">
+            <p>Aucune attestation en attente.</p>
+        </div>
+    <?php else: ?>
+        <?php foreach ($attestations as $rc): ?>
+            <div class="rc-card">
+                <div class="rc-card-header">
+                    <h4><?= htmlspecialchars($rc['nom'] . ' ' . $rc['prenom']) ?></h4>
+                    <span class="status status-pending">En attente</span>
                 </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
+
+                <div class="rc-info">
+                    <p><strong>Formation :</strong> <?= htmlspecialchars($rc['formation']) ?></p>
+                    <p><strong>Email :</strong> <?= htmlspecialchars($rc['email']) ?></p>
+                    <p><strong>Date de dépôt :</strong> <?= htmlspecialchars($rc['date_depot']) ?></p>
+                </div>
+            </div>
+        <?php endforeach; ?>
+
+        <div style="margin-top:15px">
+            <a href="<?= $base ?>/secretaire/?page=attestations">
+                ➜ Voir toutes les attestations
+            </a>
+        </div>
+    <?php endif; ?>
+</div>
+
 
     <!-- ================= ETUDIANTS ================= -->
     <div class="section">

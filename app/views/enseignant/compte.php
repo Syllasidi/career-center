@@ -1,10 +1,26 @@
 <?php
 /**
  * Vue : Compte Enseignant
+ * Rôle : Enseignant responsable
  * Affichage uniquement
  */
 
+if (!isset($_SESSION)) {
+    session_start();
+}
+
+require_once __DIR__ . '/../../models/Enseignant.php';
+
 $base = '/public';
+$model = new Enseignant();
+
+// messages flash
+$success = $_SESSION['success'] ?? null;
+$error   = $_SESSION['error'] ?? null;
+unset($_SESSION['success'], $_SESSION['error']);
+
+// droit remplacement secrétariat
+$peutRemplacerSecretaire = $model->toutesSecretairesEnConge();
 ?>
 
 <!DOCTYPE html>
@@ -16,6 +32,7 @@ $base = '/public';
 </head>
 <body>
 
+<!-- ================= NAVBAR ================= -->
 <nav class="navbar">
     <div class="navbar-left">
         <h1>IDMC CAREER CENTER</h1>
@@ -23,15 +40,26 @@ $base = '/public';
     </div>
     <div class="navbar-right">
         <a href="<?= $base ?>/enseignant/">Accueil</a>
-        <a href="<?= $base ?>/enseignant/?page=offres">Validation offres</a>
-        <a href="<?= $base ?>/enseignant/?page=affectations">Validation affectations</a>
-        <a href="<?= $base ?>/enseignant/?page=notifications">Notifications</a>
         <a href="<?= $base ?>/logout.php">Déconnexion</a>
     </div>
 </nav>
 
 <div class="container">
 
+    <!-- ======= FLASH MESSAGES ======= -->
+    <?php if (!empty($success)): ?>
+        <div class="success-notice">
+            <?= htmlspecialchars($success) ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!empty($error)): ?>
+        <div class="error-notice">
+            <?= htmlspecialchars($error) ?>
+        </div>
+    <?php endif; ?>
+
+    <!-- ======= INFOS PERSONNELLES ======= -->
     <div class="section">
         <h3>Informations personnelles</h3>
 
@@ -41,10 +69,13 @@ $base = '/public';
         <p><strong>Rôle :</strong> Enseignant responsable</p>
     </div>
 
+    <!-- ======= MOT DE PASSE ======= -->
     <div class="section">
         <h3>Changer le mot de passe</h3>
 
         <form method="POST" action="<?= $base ?>/enseignant/">
+            <input type="hidden" name="action" value="changer_mdp">
+
             <div class="form-group">
                 <label>Ancien mot de passe</label>
                 <input type="password" name="ancien_mdp" required>
@@ -55,24 +86,40 @@ $base = '/public';
                 <input type="password" name="nouveau_mdp" required>
             </div>
 
-            <button class="btn-action" disabled>
-                Mettre à jour (à implémenter)
+            <button class="btn-action">
+                Mettre à jour le mot de passe
             </button>
         </form>
     </div>
 
+    <!-- ======= REMPLACEMENT SECRÉTARIAT ======= -->
     <div class="section">
         <h3>Remplacement du secrétariat</h3>
 
         <p>
-            En cas d’absence de l’ensemble du secrétariat, un enseignant responsable
-            peut être amené à assurer temporairement certaines tâches administratives
-            (ex : attestations RC).
+            En cas d’absence complète du secrétariat, un enseignant responsable
+            peut assurer temporairement la gestion des attestations RC
+            afin de garantir la continuité du service.
         </p>
 
-        <div class="alert-notice">
-            <p>Ce mécanisme est géré automatiquement par le système.</p>
-        </div>
+        <?php if ($peutRemplacerSecretaire): ?>
+            <div class="alert-notice">
+                Toutes les secrétaires sont actuellement en congé.
+                Vous pouvez accéder à la gestion des attestations RC.
+            </div>
+
+            <form method="POST" action="<?= $base ?>/enseignant/">
+                <input type="hidden" name="action" value="acceder_attestations">
+                <button class="btn-action">
+                    Accéder aux attestations RC
+                </button>
+            </form>
+        <?php else: ?>
+            <div class="info-notice">
+                Au moins une secrétaire est en service.
+                Le remplacement du secrétariat n’est pas autorisé.
+            </div>
+        <?php endif; ?>
     </div>
 
 </div>
