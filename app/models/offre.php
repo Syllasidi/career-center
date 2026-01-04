@@ -105,7 +105,7 @@ class Offre
 
     /**
      * Enregistrement de l’offre
-     * Statut initial : EN_ATTENTE_VALIDATION
+     * 
      */
    public function enregistrerOffre(array $data): void
 {
@@ -166,6 +166,49 @@ class Offre
 }
 
 
+
+public function enregistrerBrouillon(array $data): void
+{
+    $stmt = $this->db->prepare("
+        INSERT INTO offre (
+            id_entreprise,
+            type_contrat,
+            titre,
+            description,
+            pays,
+            ville,
+            date_debut,
+            date_fin,
+            remuneration,
+            statut_offre
+        ) VALUES (
+            :idEntreprise,
+            :type_contrat,
+            :titre,
+            :description,
+            :pays,
+            :ville,
+            :date_debut,
+            :date_fin,
+            :remuneration,
+            'BROUILLON'
+        )
+    ");
+
+    $stmt->execute([
+        'idEntreprise' => $data['idEntreprise'],
+        'type_contrat' => $data['type_contrat'] ?: null,
+        'titre'        => $data['titre'] ?: null,
+        'description'  => $data['description'] ?: null,
+        'pays'         => $data['pays'] ?: null,
+        'ville'        => $data['ville'] ?: null,
+        'date_debut'   => $data['date_debut'],
+        'date_fin'     => $data['date_fin'],
+        'remuneration' => $data['remuneration']
+    ]);
+}
+
+
 private function creerNotificationValidationOffre(int $idOffre): void
 {
     $stmt = $this->db->prepare("
@@ -180,4 +223,177 @@ private function creerNotificationValidationOffre(int $idOffre): void
     $stmt->execute(['idOffre' => $idOffre]);
 }
 
+
+
+public function modifierOffre(
+    int $idOffre,
+    int $idEntreprise,
+    array $data,
+    bool $soumettre = false
+): void {
+
+    // 1️⃣ Charger l’offre existante
+    $stmt = $this->db->prepare("
+        SELECT *
+        FROM offre
+        WHERE idoffre = :idoffre
+          AND id_entreprise = :idEntreprise
+    ");
+    $stmt->execute([
+        'idoffre' => $idOffre,
+        'idEntreprise' => $idEntreprise
+    ]);
+
+    $offre = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$offre) {
+        throw new Exception("Offre introuvable.");
+    }
+
+    // 2️⃣ Sécurité métier
+    if (!in_array($offre['statut_offre'], ['BROUILLON', 'REJETTEE', 'PUBLIEE'], true)) {
+        throw new Exception("Modification non autorisée pour ce statut.");
+    }
+
+    // 3️⃣ Détection des champs sensibles
+    $champsSensibles = [
+        'type_contrat',
+        'pays',
+        'date_debut',
+        'date_fin',
+        'remuneration'
+    ];
+
+    $revalidation = false;
+    foreach ($champsSensibles as $champ) {
+        if ((string)$offre[$champ] !== (string)$data[$champ]) {
+            $revalidation = true;
+            break;
+        }
+    }
+
+    // 4️⃣ Vérification réglementaire si nécessaire
+    if ($soumettre || ($offre['statut_offre'] === 'PUBLIEE' && $revalidation)) {
+        $this->verifierConformiteOffre($data);
+    }
+
+    // 5️⃣ Calcul du nouveau statut
+    $nouveauStatut = $offre['statut_offre'];
+    $dateValidation = null;
+
+    if ($soumettre || ($offre['statut_offre'] === 'PUBLIEE' && $revalidation)) {
+        $nouveauStatut = 'EN_ATTENTE_VALIDATION';
+        $dateValidation = date('Y-m-d');
+    }
+
+    // 6️⃣ Mise à jour
+    $stmt = $this->db->prepare("
+        UPDATE offre
+        SET
+            type_contrat = :type_contrat,
+            titre = :titre,
+            description = :description,
+            pays = :pays,
+            ville = :ville,
+            date_debut = :date_debut,
+            date_fin = :date_fin,
+            remuneration = :remuneration,
+            statut_offre = :statut_offre,
+            date_mise_en_validation = :date_validation
+        WHERE idoffre = :idoffre
+    ");
+
+    $stmt->execute([
+        'type_contrat' => $data['type_contrat'],
+        'titre'        => $data['titre'],
+        'description'  => $data['description'],
+        'pays'         => $data['pays'],
+        'ville'        => $data['ville'],
+        'date_debut'   => $data['date_debut'],
+        'date_fin'     => $data['date_fin'],
+        'remuneration' => $data['remuneration'],
+        'statut_offre' => $nouveauStatut,
+        'date_validation' => $dateValidation,
+        'idoffre'      => $idOffre
+    ]);
+
+    // 7️⃣ Notification enseignant si revalidation
+    if ($nouveauStatut === 'EN_ATTENTE_VALIDATION') {
+        $this->creerNotificationValidationOffre($idOffre);
+    }
 }
+
+/**
+ * Publier une offre validée
+ */
+public function publierOffre(int $idOffre, int $idEntreprise): void
+{
+    $stmt = $this->db->prepare("
+        UPDATE offre
+        SET statut_offre = 'PUBLIEE'
+        WHERE idoffre = :idoffre
+          AND id_entreprise = :idEntreprise
+          AND statut_offre = 'VALIDEE'
+    ");
+
+    $stmt->execute([
+        'idoffre' => $idOffre,
+        'idEntreprise' => $idEntreprise
+    ]);
+
+    if ($stmt->rowCount() === 0) {
+        throw new Exception("Publication impossible pour cette offre.");
+    }
+}
+
+/**
+ * Désactiver une offre publiée
+ */
+public function desactiverOffre(int $idOffre, int $idEntreprise): void
+{
+    $stmt = $this->db->prepare("
+        UPDATE offre
+        SET statut_offre = 'DESACTIVEE'
+        WHERE idoffre = :idoffre
+          AND id_entreprise = :idEntreprise
+          AND statut_offre = 'PUBLIEE'
+    ");
+
+    $stmt->execute([
+        'idoffre' => $idOffre,
+        'idEntreprise' => $idEntreprise
+    ]);
+
+    if ($stmt->rowCount() === 0) {
+        throw new Exception("Désactivation impossible.");
+    }
+}
+
+/**
+ * Réactiver une offre désactivée
+ */
+public function reactiverOffre(int $idOffre, int $idEntreprise): void
+{
+    $stmt = $this->db->prepare("
+        UPDATE offre
+        SET statut_offre = 'PUBLIEE'
+        WHERE idoffre = :idoffre
+          AND id_entreprise = :idEntreprise
+          AND statut_offre = 'DESACTIVEE'
+    ");
+
+    $stmt->execute([
+        'idoffre' => $idOffre,
+        'idEntreprise' => $idEntreprise
+    ]);
+
+    if ($stmt->rowCount() === 0) {
+        throw new Exception("Réactivation impossible.");
+    }
+}
+
+
+
+}
+
+

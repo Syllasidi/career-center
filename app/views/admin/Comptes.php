@@ -24,9 +24,11 @@ $base = '/public';
 <body>
 
 <nav class="navbar">
+    <div class="navbar-right">
     <a href="<?= $base ?>/admin/">Accueil</a>
     <a href="<?= $base ?>/admin/?page=creer_compte">Créer un compte</a>
     <a href="<?= $base ?>/logout.php">Déconnexion</a>
+</div>
 </nav>
 
 <div class="container">

@@ -17,6 +17,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $controller->creerOffre();
         exit;
 }
+if ($_POST['action'] === 'brouillon_offre') {
+        $controller->enregistrerBrouillon();
+        exit;
+    }
+    if ($_POST['action'] === 'modifier_offre') {
+    $controller->modifierOffrePost();
+    exit;
+}
+if ($_POST['action'] === 'modifier_offre'
+        || $_POST['action'] === 'enregistrer_modification'
+        || $_POST['action'] === 'soumettre_modification') {
+
+        $controller->modifierOffrePost();
+    }
+    if ($_POST['action'] === 'accepter_candidature'
+ || $_POST['action'] === 'refuser_candidature') {
+
+    $controller->gererCandidatureAction();
+}
+
+    if (in_array($_POST['action'], [
+    'publier_offre',
+    'desactiver_offre',
+    'reactiver_offre'
+], true)) {
+
+    $controller->gererOffreAction();
+   
+}
+if ($_POST['action'] === 'proposer_offre') {
+    $controller->proposerOffreAction();
+}
+
+
+
 }
 
 
@@ -37,7 +72,7 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'ENTREPRISE') {
 /* =====================
    PAGES AUTORISÉES
    ===================== */
-$allowed = ['inscription', 'index','creer_offre'];
+$allowed = ['inscription', 'index','creer_offre','modifier_offre','gerer_offre','notification','candidatures','etudiant'];
 
 if (!in_array($page, $allowed, true)) {
     $page = 'index';

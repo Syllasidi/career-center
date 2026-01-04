@@ -48,10 +48,11 @@ $nbOffresPourvues  = $stats['offres_pourvues'] ?? 0;
     </div>
     <div class="navbar-right">
         <a href="<?= $base ?>/entreprise/">Accueil</a>
-        <a href="<?= $base ?>/entreprise/?page=offres">Mes offres</a>
+        
         <a href="<?= $base ?>/entreprise/?page=candidatures">Candidatures</a>
         <a href="<?= $base ?>/entreprise/?page=creer_offre">Créer une offre</a>
-        <a href="<?= $base ?>/entreprise/?page=compte">Compte</a>
+        <a href="<?= $base ?>/entreprise/?page=notification">Notifications</a>
+        <a href="<?= $base ?>/entreprise/?page=etudiant">Etudiants</a>
         <a href="<?= $base ?>/logout.php">Déconnexion</a>
     </div>
 </nav>
@@ -88,60 +89,92 @@ $nbOffresPourvues  = $stats['offres_pourvues'] ?? 0;
     </div>
 
     <!-- ================= OFFRES ================= -->
-    <div class="section">
-        <div class="section-header">
-            <h3>Mes offres</h3>
-            <a href="<?= $base ?>/entreprise/?page=creer_offre">
-                <button class="btn-primary">Créer une nouvelle offre</button>
-            </a>
-        </div>
+<div class="section">
+    <div class="section-header">
+        <h3>Mes offres</h3>
+        <a href="<?= $base ?>/entreprise/?page=creer_offre">
+            <button class="btn-primary">Créer une nouvelle offre</button>
+        </a>
+    </div>
 
-        <?php if (empty($offres)): ?>
-            <p>Aucune offre créée.</p>
-        <?php else: ?>
-            <table class="offers-table">
-                <thead>
-                    <tr>
-                        <th>Titre</th>
-                        <th>Type</th>
-                        <th>Date</th>
-                        <th>Candidatures</th>
-                        <th>Statut</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                <?php foreach ($offres as $offre): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($offre['titre']) ?></td>
-                        <td>
-                            <span class="offer-type-badge">
-                                <?= htmlspecialchars($offre['type_contrat']) ?>
-                            </span>
-                        </td>
-                        <td><?= htmlspecialchars($offre['date_publication']) ?></td>
-                        <td><?= (int)$offre['nb_candidatures'] ?></td>
-                        <td>
-                            <span class="status <?= $offre['status_class'] ?>">
-                                <?= htmlspecialchars($offre['statut_label']) ?>
-                            </span>
-                        </td>
-                        <td>
-    <a href="<?= $base ?>/entreprise/?page=modifier_offre&id=<?= (int)$offre['idoffre'] ?>">
-        <button class="btn-action">Modifier</button>
-    </a>
+    <?php if (empty($offres)): ?>
+        <p>Aucune offre créée.</p>
+    <?php else: ?>
+        <table class="offers-table">
+            <thead>
+                <tr>
+                    <th>Titre</th>
+                    <th>Type</th>
+                    <th>Localisation</th>
+                    <th>Période</th>
+                    <th>Candidatures</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($offres as $offre): ?>
+                <tr>
+                    <!-- Titre -->
+                    <td><?= htmlspecialchars($offre['titre']) ?></td>
 
-    <a href="<?= $base ?>/entreprise/?page=gerer_offre&id=<?= (int)$offre['idoffre'] ?>">
-        <button class="btn-danger">Gérer</button>
-    </a>
+                    <!-- Type -->
+                    <td>
+                        <span class="offer-type-badge">
+                            <?= htmlspecialchars($offre['type_contrat']) ?>
+                        </span>
+                    </td>
+
+                    <!-- Localisation -->
+                    <td>
+                        <?= htmlspecialchars($offre['ville'] ?? '—') ?>,
+                        <?= htmlspecialchars($offre['pays'] ?? '—') ?>
+                    </td>
+
+                    <!-- Période -->
+                    <td>
+                        <?php if (!empty($offre['date_debut']) && !empty($offre['date_fin'])): ?>
+                            <?= htmlspecialchars($offre['date_debut']) ?> →
+                            <?= htmlspecialchars($offre['date_fin']) ?>
+                        <?php else: ?>
+                            —
+                        <?php endif; ?>
+                    </td>
+
+                    <!-- Candidatures -->
+                    <td><?= (int)$offre['nb_candidatures'] ?></td>
+
+                    <!-- Statut -->
+                    <td>
+                        <span class="status <?= $offre['status_class'] ?>">
+                            <?= htmlspecialchars($offre['statut_label']) ?>
+                        </span>
+                    </td>
+
+                    <!-- Actions -->
+                    <td>
+    <?php if (in_array($offre['statut_offre'], ['BROUILLON', 'REJETTEE', 'PUBLIEE'], true)): ?>
+        <a href="<?= $base ?>/entreprise/?page=modifier_offre&id=<?= $offre['idoffre'] ?>"
+           class="btn-action">
+            Modifier
+        </a>
+    <?php endif; ?>
+
+    <?php if (in_array($offre['statut_offre'], ['VALIDEE', 'PUBLIEE', 'DESACTIVEE'], true)): ?>
+        <a href="<?= $base ?>/entreprise/?page=gerer_offre&id=<?= $offre['idoffre'] ?>"
+           class="btn-danger">
+            Gérer
+        </a>
+    <?php endif; ?>
 </td>
 
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
-        <?php endif; ?>
-    </div>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
+</div>
+
 
 </div>
 

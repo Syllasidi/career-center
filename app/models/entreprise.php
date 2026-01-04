@@ -11,15 +11,18 @@ class Entreprise
         $this->db = Database::getConnection();
     }
 
-    /* =====================================================
-       INSCRIPTION ENTREPRISE
-       ===================================================== */
+    /**
+     * Inscription entreprise
+     * Diagramme de séquence respecté
+     */
     public function inscrireEntreprise(array $data): bool
     {
         $this->db->beginTransaction();
 
         try {
-            // UTILISATEUR
+            /**
+             * 1️⃣ UTILISATEUR
+             */
             $stmt = $this->db->prepare("
                 INSERT INTO utilisateur (nom, prenom, email, role, statut)
                 VALUES (:nom, '', :email, 'ENTREPRISE', 'ACTIF')
@@ -29,9 +32,12 @@ class Entreprise
                 'nom'   => $data['raison_sociale'],
                 'email' => $data['email']
             ]);
+
             $idUtilisateur = (int)$stmt->fetchColumn();
 
-            // ENTREPRISE
+            /**
+             * 2️⃣ ENTREPRISE
+             */
             $stmt = $this->db->prepare("
                 INSERT INTO entreprise
                 (idutilisateur, raison_sociale, siret, adresse, secteur_activite)
@@ -45,7 +51,9 @@ class Entreprise
                 'secteur' => $data['secteur_activite']
             ]);
 
-            // COMPTE
+            /**
+             * 3️⃣ COMPTE
+             */
             $stmt = $this->db->prepare("
                 INSERT INTO compte (identifiant, mdp, idutilisateur)
                 VALUES (:identifiant, :mdp, :id)
@@ -65,215 +73,230 @@ class Entreprise
         }
     }
 
-    /* =====================================================
-       STATISTIQUES ACCUEIL ENTREPRISE
-       ===================================================== */
-    public function getStatsEntreprise(int $idEntreprise): array
-    {
-        return [
-            'offres_actives'  => $this->count("
-                SELECT COUNT(*) FROM offre
-                WHERE id_entreprise = :id AND statut_offre = 'PUBLIEE'
-            ", $idEntreprise),
 
-            'offres_attente'  => $this->count("
-                SELECT COUNT(*) FROM offre
-                WHERE id_entreprise = :id AND statut_offre = 'EN_ATTENTE_VALIDATION'
-            ", $idEntreprise),
 
-            'candidatures'    => $this->count("
-                SELECT COUNT(*) FROM candidature c
-                JOIN offre o ON o.idoffre = c.idoffre
-                WHERE o.id_entreprise = :id
-            ", $idEntreprise),
+    /**
+ * ======================================
+ * STATISTIQUES ACCUEIL ENTREPRISE
+ * ======================================
+ */
+public function getStatsEntreprise(int $idEntreprise): array
+{
+    $stats = [
+        'offres_actives'  => 0,
+        'offres_attente'  => 0,
+        'candidatures'    => 0,
+        'offres_pourvues' => 0
+    ];
 
-            'offres_pourvues' => $this->count("
-                SELECT COUNT(DISTINCT o.idoffre)
-                FROM offre o
-                JOIN candidature c ON c.idoffre = o.idoffre
-                WHERE o.id_entreprise = :id
-                  AND c.statut_candidature = 'AFFECTEE'
-            ", $idEntreprise)
-        ];
-    }
+    // Offres actives (PUBLIÉES)
+    $stmt = $this->db->prepare("
+        SELECT COUNT(*)
+        FROM offre
+        WHERE id_entreprise = :id
+          AND statut_offre = 'PUBLIEE'
+    ");
+    $stmt->execute(['id' => $idEntreprise]);
+    $stats['offres_actives'] = (int) $stmt->fetchColumn();
 
-    private function count(string $sql, int $id): int
-    {
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute(['id' => $id]);
-        return (int)$stmt->fetchColumn();
-    }
+    // Offres en attente de validation
+    $stmt = $this->db->prepare("
+        SELECT COUNT(*)
+        FROM offre
+        WHERE id_entreprise = :id
+          AND statut_offre = 'EN_ATTENTE_VALIDATION'
+    ");
+    $stmt->execute(['id' => $idEntreprise]);
+    $stats['offres_attente'] = (int) $stmt->fetchColumn();
 
-    /* =====================================================
-       LISTE DES OFFRES ENTREPRISE
-       ===================================================== */
-    public function getOffresEntreprise(int $idEntreprise): array
-    {
-        $stmt = $this->db->prepare("
-            SELECT
-                o.idoffre,
-                o.titre,
-                o.type_contrat,
-                o.statut_offre,
-                o.date_mise_en_validation,
-                COUNT(c.idcandidature) AS nb_candidatures
-            FROM offre o
-            LEFT JOIN candidature c ON c.idoffre = o.idoffre
-            WHERE o.id_entreprise = :id
-            GROUP BY o.idoffre
-            ORDER BY o.date_mise_en_validation DESC
-        ");
-        $stmt->execute(['id' => $idEntreprise]);
+    // Candidatures reçues sur les offres de l’entreprise
+    $stmt = $this->db->prepare("
+        SELECT COUNT(*)
+        FROM candidature c
+        JOIN offre o ON o.idoffre = c.idoffre
+        WHERE o.id_entreprise = :id
+    ");
+    $stmt->execute(['id' => $idEntreprise]);
+    $stats['candidatures'] = (int) $stmt->fetchColumn();
 
-        $offres = [];
+    // Offres pourvues (au moins une candidature AFFECTEE)
+    $stmt = $this->db->prepare("
+        SELECT COUNT(DISTINCT o.idoffre)
+        FROM offre o
+        JOIN candidature c ON c.idoffre = o.idoffre
+        WHERE o.id_entreprise = :id
+          AND c.statut_candidature = 'AFFECTEE'
+    ");
+    $stmt->execute(['id' => $idEntreprise]);
+    $stats['offres_pourvues'] = (int) $stmt->fetchColumn();
 
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            [$label, $class] = $this->mapStatutOffre($row['statut_offre']);
+    return $stats;
+}
+/**
+ * ======================================
+ * LISTE DES OFFRES DE L’ENTREPRISE
+ * ======================================
+ */
+public function getOffresEntreprise(int $idEntreprise): array
+{
+    $sql = "
+        SELECT
+            o.*,
+            COUNT(c.idcandidature) AS nb_candidatures
+        FROM offre o
+        LEFT JOIN candidature c ON c.idoffre = o.idoffre
+        WHERE o.id_entreprise = :id
+        GROUP BY o.idoffre
+        ORDER BY o.date_validation DESC NULLS LAST, o.idoffre DESC
+    ";
 
-            $offres[] = [
-                'idoffre'           => (int)$row['idoffre'],
-                'titre'             => $row['titre'],
-                'type_contrat'      => $row['type_contrat'],
-                'date_publication'  => $row['date_mise_en_validation'],
-                'nb_candidatures'   => (int)$row['nb_candidatures'],
-                'statut_label'      => $label,
-                'status_class'      => $class
-            ];
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute(['id' => $idEntreprise]);
+
+    $result = [];
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+
+        // =====================
+        // Mapping statut → UI
+        // =====================
+        switch ($row['statut_offre']) {
+
+            case 'BROUILLON':
+                $label = 'Brouillon';
+                $class = 'status-draft';
+                break;
+
+            case 'EN_ATTENTE_VALIDATION':
+                $label = 'En attente validation';
+                $class = 'status-pending';
+                break;
+
+            case 'REJETTEE':
+                $label = 'Rejetée';
+                $class = 'status-rejected';
+                break;
+
+            case 'VALIDEE':
+                $label = 'Validée';
+                $class = 'status-validated';
+                break;
+
+            case 'PUBLIEE':
+                $label = 'Publiée';
+                $class = 'status-active';
+                break;
+
+            case 'DESACTIVEE':
+                $label = 'Désactivée';
+                $class = 'status-inactive';
+                break;
+
+            default:
+                $label = 'Inconnu';
+                $class = 'status-pending';
         }
 
-        return $offres;
+        // =====================
+        // Construction résultat
+        // =====================
+        $row['nb_candidatures'] = (int)$row['nb_candidatures'];
+        $row['statut_label']    = $label;
+        $row['status_class']    = $class;
+
+        // date d’affichage (fallback propre)
+        $row['date_affichage']  = $row['date_validation'] ?? '—';
+
+        $result[] = $row;
     }
 
-    private function mapStatutOffre(string $statut): array
-    {
-        return match ($statut) {
-            'BROUILLON'              => ['Brouillon', 'status-draft'],
-            'EN_ATTENTE_VALIDATION'  => ['En attente', 'status-pending'],
-            'VALIDEE'                => ['Validée', 'status-validated'],
-            'PUBLIEE'                => ['Publiée', 'status-published'],
-            'REJETTEE'               => ['Rejetée', 'status-rejected'],
-            'DESACTIVEE'             => ['Désactivée', 'status-disabled'],
-            default                  => [$statut, 'status-pending'],
-        };
-    }
+    return $result;
+}
 
-    /* =====================================================
-       CREATION / BROUILLON / MODIFICATION OFFRE
-       ===================================================== */
-    public function creerOuModifierOffre(array $data, int $idEntreprise, string $mode): void
-    {
-        $statut = ($mode === 'brouillon')
-            ? 'BROUILLON'
-            : 'EN_ATTENTE_VALIDATION';
 
-        if (!empty($data['idoffre'])) {
-            // MODIFICATION
-            $stmt = $this->db->prepare("
-                UPDATE offre SET
-                    titre = :titre,
-                    description = :description,
-                    remuneration = :remu,
-                    pays = :pays,
-                    ville = :ville,
-                    date_debut = :debut,
-                    date_fin = :fin,
-                    statut_offre = :statut,
-                    date_mise_en_validation = CURRENT_DATE
-                WHERE idoffre = :id
-                  AND id_entreprise = :ent
-            ");
-            $stmt->execute([
-                'titre'  => $data['titre'],
-                'description' => $data['description'],
-                'remu'   => $data['remuneration'],
-                'pays'   => $data['pays'],
-                'ville'  => $data['ville'],
-                'debut'  => $data['date_debut'],
-                'fin'    => $data['date_fin'],
-                'statut' => $statut,
-                'id'     => $data['idoffre'],
-                'ent'    => $idEntreprise
-            ]);
-        } else {
-            // CREATION
-            $stmt = $this->db->prepare("
-                INSERT INTO offre
-                (type_contrat, titre, description, remuneration, pays, ville,
-                 date_debut, date_fin, statut_offre, id_entreprise)
-                VALUES
-                (:type, :titre, :desc, :remu, :pays, :ville,
-                 :debut, :fin, :statut, :ent)
-            ");
-            $stmt->execute([
-                'type'  => $data['type_contrat'],
-                'titre' => $data['titre'],
-                'desc'  => $data['description'],
-                'remu'  => $data['remuneration'],
-                'pays'  => $data['pays'],
-                'ville' => $data['ville'],
-                'debut' => $data['date_debut'],
-                'fin'   => $data['date_fin'],
-                'statut'=> $statut,
-                'ent'   => $idEntreprise
-            ]);
+/**
+ * ======================================
+ * CANDIDATURES REÇUES PAR L’ENTREPRISE
+ * ======================================
+ */
+public function getCandidaturesEntreprise(int $idEntreprise): array
+{
+    $sql = "
+        SELECT
+            c.idcandidature      AS idcandidature,
+            c.statut_candidature AS statut_candidature,
+            c.date_candidature,
 
-            if ($statut === 'EN_ATTENTE_VALIDATION') {
-                $this->notifierEnseignants("Nouvelle offre à valider");
-            }
-        }
-    }
+            u.nom,
+            u.prenom,
+            u.email,
 
-    /* =====================================================
-       GESTION DES CANDIDATURES
-       ===================================================== */
-    public function getCandidaturesOffre(int $idOffre): array
-    {
-        $stmt = $this->db->prepare("
-            SELECT
-                c.idcandidature,
-                c.statut_candidature,
-                c.date_candidature,
-                u.nom,
-                u.prenom,
-                u.email,
-                e.formation
-            FROM candidature c
-            JOIN etudiant e ON e.idutilisateur = c.id_etudiant
-            JOIN utilisateur u ON u.idutilisateur = e.idutilisateur
-            WHERE c.idoffre = :id
-            ORDER BY c.date_candidature DESC
-        ");
-        $stmt->execute(['id' => $idOffre]);
+            e.formation,
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
+            o.titre              AS offre
+        FROM candidature c
+        JOIN offre o ON o.idoffre = c.idoffre
+        JOIN etudiant e ON e.idutilisateur = c.id_etudiant
+        JOIN utilisateur u ON u.idutilisateur = e.idutilisateur
+        WHERE o.id_entreprise = :id
+        ORDER BY c.date_candidature DESC
+    ";
 
-    public function traiterCandidature(int $idCandidature, string $action): void
-    {
-        $statut = ($action === 'accepter')
-            ? 'EN_VALIDATION_ENSEIGNANT'
-            : 'REJETEE';
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute(['id' => $idEntreprise]);
 
-        $stmt = $this->db->prepare("
-            UPDATE candidature
-            SET statut_candidature = :statut
-            WHERE idcandidature = :id
-        ");
-        $stmt->execute([
-            'statut' => $statut,
-            'id'     => $idCandidature
-        ]);
-    }
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
-    /* =====================================================
-       NOTIFICATIONS
-       ===================================================== */
-    private function notifierEnseignants(string $message): void
-    {
-        $this->db->exec("
-            INSERT INTO notification (message, type, idutilisateur)
-            SELECT '{$message}', 'VALIDATION_OFFRE', idutilisateur
-            FROM enseignant
-        ");
-    }
+/**
+ * ======================================
+ * RÉCUPÉRER UNE OFFRE DE L’ENTREPRISE
+ * (pour modification)
+ * ======================================
+ */
+public function getOffreEntrepriseById(int $idOffre, int $idEntreprise): ?array
+{
+    $stmt = $this->db->prepare("
+        SELECT *
+        FROM offre
+        WHERE idoffre = :idoffre
+          AND id_entreprise = :idEntreprise
+    ");
+
+    $stmt->execute([
+        'idoffre'      => $idOffre,
+        'idEntreprise' => $idEntreprise
+    ]);
+
+    $offre = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $offre ?: null;
+}
+public function getEtudiantsVisibles(): array
+{
+    $sql = "
+        SELECT
+            u.idutilisateur,
+            u.nom,
+            u.prenom,
+            u.email,
+            e.formation,
+            e.competence,
+            e.en_recherche_active
+        FROM etudiant e
+        JOIN utilisateur u ON u.idutilisateur = e.idutilisateur
+        WHERE e.profil_visible = TRUE
+          AND u.statut = 'ACTIF'
+          AND u.role = 'ETUDIANT'
+        ORDER BY u.nom, u.prenom
+    ";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute();
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+
 }

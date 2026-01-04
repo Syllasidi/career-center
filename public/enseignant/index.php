@@ -10,6 +10,7 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'ENSEIGNANT') {
    TRAITEMENT POST
    ===================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  
     require_once __DIR__ . '/../../app/controllers/EnseignantController.php';
     $controller = new EnseignantController();
 
@@ -21,6 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($_POST['action'] === 'rejeter_offre') {
         $controller->rejeterOffre();
         exit;
+         /* require_once __DIR__ . '/../../app/controllers/secretaireController.php';
+    $ctrl = new secretaireController();*/
     if ($_POST['action'] === 'changer_mdp') {
         $ctrl->changerMdp();
         exit;
